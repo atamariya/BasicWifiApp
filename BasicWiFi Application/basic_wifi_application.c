@@ -626,17 +626,16 @@ DemoHandleUartCommand(unsigned char *usBuffer)
 			ulSsidLen = atoc(usBuffer[2]);
 			pcSsid = (char *)&usBuffer[3];
 			
-#ifndef CC3000_TINY_DRIVER
-			ulDataLength = ulSsidLen + 3;
-			ulDataLength = atoc(usBuffer[ulDataLength]);
-			key = (UINT8 *)&usBuffer[ulDataLength + 1];
-					// data length to send
+			INT32 key_len = ulSsidLen + 3;
+			UINT32 ulSecType = atoc(usBuffer[key_len]);
+			key = 0;
+			if (key_len != 0) {
+				key_len = atoc(usBuffer[key_len + 1]);
+				key = (UINT8 *)&usBuffer[key_len + 2];
+			}
 			//wlan_connect(WLAN_SEC_UNSEC, pcSsid, ulSsidLen,NULL, NULL, 0);
-					wlan_connect1(WLAN_SEC_WPA2, pcSsid, ulSsidLen,NULL, key, ulDataLength);
-#else
-			
-//			wlan_connect(pcSsid,ulSsidLen);
-#endif
+			// default ulSecType=0, key_len=0
+					wlan_connect1(ulSecType, pcSsid, ulSsidLen,NULL, key, key_len);
 		} 
 		break;
 		
@@ -839,7 +838,7 @@ main(void)
 		// 2. CC3000 established AP connection
 		// 3. DHCP IP is configured
 		// then send mDNS packet to stop external SmartConfig application
-		if ((ucStopSmartConfig == 1) && (ulCC3000DHCP == 1) && (ulCC3000Connected == 1))
+		if ((ulCC3000DHCP == 1) && (ulCC3000Connected == 1))
 		{
 			unsigned char loop_index = 0;
 			
