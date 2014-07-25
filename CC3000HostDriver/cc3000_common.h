@@ -132,7 +132,7 @@ extern "C" {
 //TX and RX buffer sizes, allow to receive and transmit maximum data at length 8.
 #ifdef CC3000_TINY_DRIVER
 #define TINY_CC3000_MAXIMAL_RX_SIZE 44
-#define TINY_CC3000_MAXIMAL_TX_SIZE 59
+#define TINY_CC3000_MAXIMAL_TX_SIZE (59 + 1)
 #endif
 
 /*In order to determine your preferred buffer size, 

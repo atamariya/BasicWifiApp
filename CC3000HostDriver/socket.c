@@ -185,7 +185,7 @@ INT16 HostFlowControlConsumeBuff(INT16 sd)
 
 INT16 socket(INT32 domain, INT32 type, INT32 protocol)
 {
-	INT32 ret;
+	INT16 ret;
 	UINT8 *ptr, *args;
 
 	ret = EFAIL;

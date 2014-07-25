@@ -318,6 +318,7 @@ SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
     if(!(usLength & 0x0001))
     {
         ucPad++;
+        pUserBuffer[usLength + ucPad + SPI_HEADER_SIZE] = 0;
     }
 
 

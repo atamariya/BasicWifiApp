@@ -576,7 +576,6 @@ INT32 wlan_ioctl_set_connection_policy(UINT32 should_connect_to_open_ap,
 //
 //*****************************************************************************
 
-#ifndef CC3000_TINY_DRIVER
 INT32 wlan_add_profile(UINT32 ulSecType, 
 	UINT8* ucSsid,
 	UINT32 ulSsidLen, 
@@ -697,21 +696,7 @@ INT32 wlan_add_profile(UINT32 ulSecType,
 
 	return(ret);
 }
-#else
-INT32 wlan_add_profile(UINT32 ulSecType, 
-	UINT8* ucSsid,
-	UINT32 ulSsidLen, 
-	UINT8 *ucBssid,
-	UINT32 ulPriority,
-	UINT32 ulPairwiseCipher_Or_TxKeyLen,
-	UINT32 ulGroupCipher_TxKeyIndex,
-	UINT32 ulKeyMgmt,
-	UINT8* ucPf_OrKey,
-	UINT32 ulPassPhraseLen)
-{
-	return -1;
-}
-#endif
+
 
 //*****************************************************************************
 //

@@ -51,6 +51,17 @@ extern "C" {
 #define      WLAN_SEC_WEP	(1)
 #define      WLAN_SEC_WPA	(2)
 #define      WLAN_SEC_WPA2	(3)
+
+/* Per
+* http://e2e.ti.com/support/low_power_rf/f/851/p/285991/999909.aspx#999909
+* the magic constants below are from wpa_supplicant. */
+#define WPA_DRIVER_CAPA_KEY_MGMT_WPA2 0x00000002
+#define WPA_CIPHER_NONE 0x01
+#define WPA_CIPHER_WEP40 0x02
+#define WPA_CIPHER_WEP104 0x04
+#define WPA_CIPHER_TKIP 0x08
+#define WPA_CIPHER_CCMP 0x10
+
 //*****************************************************************************
 //
 //! \addtogroup wlan_api
