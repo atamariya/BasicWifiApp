@@ -617,7 +617,7 @@ DemoHandleUartCommand(unsigned char *usBuffer)
 	{
 		// Start a smart configuration process
 	case UART_COMMAND_CC3000_SIMPLE_CONFIG_START:
-		StartSmartConfig();
+//		StartSmartConfig();
 		break;
 		
 		// Start a WLAN Connect process
@@ -700,7 +700,7 @@ DemoHandleUartCommand(unsigned char *usBuffer)
 		
 		// Handle send data command
 	case UART_COMMAND_SEND_DATA:
-		
+		ulSocket = socket((INT32)AF_INET, (INT32)SOCK_DGRAM, (INT32)IPPROTO_UDP);
 		// data pointer
 		pcData = (char *)&usBuffer[4];
 		
@@ -833,6 +833,7 @@ main(void)
 	
 	//  Board Initialization start
 	initDriver();
+//	endpoint_setup();
 	
 	// Initialize the UART RX Buffer   
 	memset(g_ucUARTBuffer, 0xFF, UART_IF_BUFFER);

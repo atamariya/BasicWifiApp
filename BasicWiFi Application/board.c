@@ -683,11 +683,11 @@ __enable_interrupt();
 
 //Catch interrupt vectors that are not initialized.
 
-#ifdef __CCS__
-#pragma vector=PORT1_VECTOR, WDT_VECTOR, USCIAB0TX_VECTOR, TIMER1_A1_VECTOR, TIMER0_A1_VECTOR, TIMER0_A0_VECTOR, ADC10_VECTOR, NMI_VECTOR, COMPARATORA_VECTOR
-__interrupt void Trap_ISR(void)
-{
-//  while(1);
-}
+//#ifdef __CCS__
+//#pragma vector=PORT1_VECTOR, WDT_VECTOR, USCIAB0TX_VECTOR, TIMER1_A1_VECTOR, TIMER0_A1_VECTOR, TIMER0_A0_VECTOR, ADC10_VECTOR, NMI_VECTOR, COMPARATORA_VECTOR
+//__interrupt void Trap_ISR(void)
+//{
+////  while(1);
+//}
 
-#endif
+//#endif
