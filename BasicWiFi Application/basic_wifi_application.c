@@ -685,7 +685,7 @@ void DemoHandleUartCommand(unsigned char *usBuffer) {
 
 		ulSocket = socket((INT32) AF_INET, (INT32) SOCK_DGRAM,
 				(INT32) IPPROTO_UDP);
-		sendto(ulSocket, buf, 8, 0, &tSocketAddr, sizeof(sockaddr));
+		sendto(ulSocket, buf, buflen, 0, &tSocketAddr, sizeof(sockaddr));
 		break;
 
 	default:
