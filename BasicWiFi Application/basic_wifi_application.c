@@ -404,7 +404,20 @@ void CC3000_UsynchCallback(long lEventType, char * data, unsigned char length)
 		// only if status is OK, the flag is set to 1 and the addresses are valid
 		if ( *(data + NETAPP_IPCONFIG_MAC_OFFSET) == 0)
 		{
-			sprintf( (char*)pucCC3000_Rx_Buffer,"IP:%d.%d.%d.%d\n\r", data[3],data[2], data[1], data[0] );
+//			sprintf( (char*)pucCC3000_Rx_Buffer,"IP:%d.%d.%d.%d\n\r", data[3],data[2], data[1], data[0] );
+			int i, ptr = 3;
+			strcpy(pucCC3000_Rx_Buffer, "IP:");
+			i = itoa(data[3], &pucCC3000_Rx_Buffer[ptr]);
+			ptr += i;
+			pucCC3000_Rx_Buffer[ptr++] = '.';
+			i = itoa(data[2], &pucCC3000_Rx_Buffer[ptr]);
+			ptr += i;
+			pucCC3000_Rx_Buffer[ptr++] = '.';
+			i = itoa(data[1], &pucCC3000_Rx_Buffer[ptr]);
+			ptr += i;
+			pucCC3000_Rx_Buffer[ptr++] = '.';
+			i = itoa(data[0], &pucCC3000_Rx_Buffer[ptr]);
+			strcpy(pucCC3000_Rx_Buffer + ptr + i, "\n\r");
 
 			ulCC3000DHCP = 1;
 
