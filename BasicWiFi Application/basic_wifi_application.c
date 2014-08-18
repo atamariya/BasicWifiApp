@@ -95,12 +95,8 @@ volatile long ulSocket;
 // Indications that UART command has finished etc
 const unsigned char pucUARTCommandDoneString[] = { '\n', '\r', 'D', 'O', 'N',
 		'E', '\n', '\r' };
-const unsigned char pucUARTCommandSmartConfigDoneString[] = { '\n', '\r', 'S',
-		'm', 'a', 'r', 't', ' ', 'c', 'o', 'n', 'f', 'i', 'g', ' ', 'D', 'O',
-		'N', 'E', '\n', '\r' };
 const unsigned char pucUARTExampleAppString[] = { '\n', '\r', 'E', 'x', 'a',
-		'm', 'p', 'l', 'e', ' ', 'A', 'p', 'p', ':', 'd', 'r', 'i', 'v', 'e',
-		'r', ' ', 'v', 'e', 'r', 's', 'i', 'o', 'n', ' ' };
+		'm', 'p', 'l', 'e', ' ', 'A', 'p', 'p', ' ' };
 const unsigned char pucUARTNoDataString[] = { '\n', '\r', 'N', 'o', ' ', 'd',
 		'a', 't', 'a', ' ', 'r', 'e', 'c', 'e', 'i', 'v', 'e', 'd', '\n', '\r' };
 const unsigned char pucUARTIllegalCommandString[] = { '\n', '\r', 'I', 'l', 'l',
@@ -476,14 +472,91 @@ int initDriver(void) {
 //!  @brief  The function handles commands arrived from CLI
 //
 //*****************************************************************************
+uint8_t buf[25];
+size_t buflen = 0;
+
+static inline void serverListen() {
+	volatile signed long iReturnValue;
+	socklen_t tRxPacketLength;
+	sockaddr tSocketAddr;
+
+	// Open socket
+	if (0 != HostFlowControlConsumeBuff(ulSocket)) {
+		ulSocket = socket((INT32) AF_INET, (INT32) SOCK_DGRAM,
+				(INT32) IPPROTO_UDP);
+
+		// bind to port
+		tSocketAddr.sa_family = AF_INET;
+		// the source port
+		tSocketAddr.sa_data[0] = 22; // translates to 5683 from sendto example
+		tSocketAddr.sa_data[1] = 51;
+		// all 0 IP address
+		memset(&tSocketAddr.sa_data[2], 0, 4);
+		bind(ulSocket, &tSocketAddr, sizeof(sockaddr));
+	}
+
+	fd_set readSet;
+	//		, writeSet;
+	struct timeval tv;
+	/* Wait up to five seconds. */
+	tv.tv_sec = 5;
+	tv.tv_usec = 0;
+	FD_ZERO(&readSet);
+	//		FD_ZERO(&writeSet);
+	//		FD_ZERO(&exceptSet);
+	FD_SET(ulSocket, &readSet);
+//			FD_SET(ulSocket, &writeSet);
+	iReturnValue = select(ulSocket + 1, &readSet, NULL,
+	NULL, &tv);
+	if (iReturnValue <= 0) {
+		// No data received by device
+		DispatcherUartSendPacket((unsigned char*) pucUARTNoDataString,
+				sizeof(pucUARTNoDataString));
+		return;
+	}
+	// perform read on read socket if data available
+	if (FD_ISSET(ulSocket, &readSet))
+	{
+		// perform receive
+		//			do {
+		iReturnValue = recvfrom(ulSocket, pucCC3000_Rx_Buffer,
+		CC3000_APP_BUFFER_SIZE, 0, &tSocketAddr, &tRxPacketLength);
+		if (iReturnValue > 0)
+			DispatcherUartSendPacket(pucCC3000_Rx_Buffer, iReturnValue);
+		//			} while (iReturnValue > 0);
+	}
+
+	// perform send on the write socket if it is ready to receive next chunk of data
+	//		if (FD_ISSET(wSocket, &writeSet))
+	{
+		coap_packet_t in;
+		in.hdr.ver = COAP_VERSION;
+		in.hdr.t = COAP_TYPE_NON;
+		in.hdr.tkl = 0;
+		in.hdr.code = COAP_METHOD_GET;
+		in.numopts = 1;
+		in.opts[0].num = COAP_OPTION_URI_PATH;
+		in.opts[0].buf.p = "light";
+		in.opts[0].buf.len = 5;
+		in.payload.len = 0;
+		buflen = 0;
+		coap_build(buf, &buflen, &in);
+	}
+
+	if (buflen > 0) {
+		sendto(ulSocket, buf, buflen, 0, &tSocketAddr, sizeof(sockaddr));
+	}
+}
 
 void DemoHandleUartCommand(unsigned char *usBuffer) {
-	char *pcSsid, *pcData, *pcSockAddrAscii;
+	char *pcSsid;
+//	, *pcData, *pcSockAddrAscii;
 	UINT8 *key;
-	unsigned long ulSsidLen, ulDataLength;
+	unsigned long ulSsidLen;
+//	, ulDataLength;
 	volatile signed long iReturnValue;
-	sockaddr tSocketAddr;
-	socklen_t tRxPacketLength;
+//	sockaddr tSocketAddr;
+//	socklen_t tRxPacketLength;
 //	unsigned char pucIP_Addr[4];
 //	unsigned char pucIP_DefaultGWAddr[4];
 //	unsigned char pucSubnetMask[4];
@@ -537,155 +610,136 @@ void DemoHandleUartCommand(unsigned char *usBuffer) {
 		break;
 
 		// Handle open socket command
-	case UART_COMMAND_SOCKET_OPEN:
-		//wait for DHCP process to finish. if you are using a static IP address
-		//please delete the wait for DHCP event - ulCC3000DHCP 
-		while ((ulCC3000DHCP == 0) || (ulCC3000Connected == 0)) {
-			__delay_cycles(1000);
-		}
-		ulSocket = socket((INT32) AF_INET, (INT32) SOCK_DGRAM,
-				(INT32) IPPROTO_UDP);
-		break;
-
-		// Handle close socket command
-	case UART_COMMAND_SOCKET_CLOSE:
-		closesocket(ulSocket);
-		ulSocket = 0xFFFFFFFF;
-		break;
-
-		// Handle receive data command
-	case UART_COMMAND_RCV_DATA:
-		iReturnValue = recvfrom(ulSocket, pucCC3000_Rx_Buffer,
-				CC3000_APP_BUFFER_SIZE, 0, &tSocketAddr, &tRxPacketLength);
-		if (iReturnValue <= 0) {
-			// No data received by device
-			DispatcherUartSendPacket((unsigned char*) pucUARTNoDataString,
-					sizeof(pucUARTNoDataString));
-		} else {
-			// Send data to UART...
-			//DispatcherUartSendPacket(pucCC3000_Rx_Buffer, CC3000_APP_BUFFER_SIZE);
-			DispatcherUartSendPacket(pucCC3000_Rx_Buffer, iReturnValue);
-		}
-		break;
-
-		// Handle send data command
-	case UART_COMMAND_SEND_DATA:
-		ulSocket = socket((INT32) AF_INET, (INT32) SOCK_DGRAM,
-				(INT32) IPPROTO_UDP);
-		// data pointer
-		pcData = (char *) &usBuffer[4];
-
-		// data length to send
-		ulDataLength = atoshort(usBuffer[2], usBuffer[3]);
-
-#ifdef CC3000_TINY_DRIVER
-		if(ulDataLength > CC3000_APP_BUFFER_SIZE)
-		{
-			ulDataLength = CC3000_APP_BUFFER_SIZE;
-		}
-#endif
-
-		pcSockAddrAscii = (pcData + ulDataLength);
-
-		// the family is always AF_INET
-		tSocketAddr.sa_family = AF_INET;//atoshort(pcSockAddrAscii[0], pcSockAddrAscii[1]);
-
-		// the destination port
-		tSocketAddr.sa_data[0] = ascii_to_char(pcSockAddrAscii[0],
-				pcSockAddrAscii[1]);
-		tSocketAddr.sa_data[1] = ascii_to_char(pcSockAddrAscii[2],
-				pcSockAddrAscii[3]);
-
-		// the destination IP address
-		tSocketAddr.sa_data[2] = ascii_to_char(pcSockAddrAscii[4],
-				pcSockAddrAscii[5]);
-		tSocketAddr.sa_data[3] = ascii_to_char(pcSockAddrAscii[6],
-				pcSockAddrAscii[7]);
-		tSocketAddr.sa_data[4] = ascii_to_char(pcSockAddrAscii[8],
-				pcSockAddrAscii[9]);
-		tSocketAddr.sa_data[5] = ascii_to_char(pcSockAddrAscii[10],
-				pcSockAddrAscii[11]);
-
-		sendto(ulSocket, pcData, ulDataLength, 0, &tSocketAddr,
-				sizeof(sockaddr));
-		break;
-
-		// Handle bind command
-	case UART_COMMAND_BSD_BIND:
-		tSocketAddr.sa_family = AF_INET;
-
-		// the source port
-		tSocketAddr.sa_data[0] = ascii_to_char(usBuffer[2], usBuffer[3]);
-		tSocketAddr.sa_data[1] = ascii_to_char(usBuffer[4], usBuffer[5]);
-
-		// all 0 IP address
-		memset(&tSocketAddr.sa_data[2], 0, 4);
-
-		bind(ulSocket, &tSocketAddr, sizeof(sockaddr));
-
-		break;
-
-		// Handle IP configuration command
-//	case UART_COMMAND_IP_CONFIG:
+//	case UART_COMMAND_SOCKET_OPEN:
+//		//wait for DHCP process to finish. if you are using a static IP address
+//		//please delete the wait for DHCP event - ulCC3000DHCP
+//		while ((ulCC3000DHCP == 0) || (ulCC3000Connected == 0)) {
+//			__delay_cycles(1000);
+//		}
+//		ulSocket = socket((INT32) AF_INET, (INT32) SOCK_DGRAM,
+//				(INT32) IPPROTO_UDP);
+//		break;
 //
-//		// Network mask is assumed to be 255.255.255.0
-//		pucSubnetMask[0] = 0xFF;
-//		pucSubnetMask[1] = 0xFF;
-//		pucSubnetMask[2] = 0xFF;
-//		pucSubnetMask[3] = 0x0;
+//		// Handle close socket command
+//	case UART_COMMAND_SOCKET_CLOSE:
+//		closesocket(ulSocket);
+//		ulSocket = 0xFFFFFFFF;
+//		break;
 //
-//		pucIP_Addr[0] = ascii_to_char(usBuffer[2], usBuffer[3]);
-//		pucIP_Addr[1] = ascii_to_char(usBuffer[4], usBuffer[5]);
-//		pucIP_Addr[2] = ascii_to_char(usBuffer[6], usBuffer[7]);
-//		pucIP_Addr[3] = ascii_to_char(usBuffer[8], usBuffer[9]);
+//		// Handle receive data command
+//	case UART_COMMAND_RCV_DATA:
+//		iReturnValue = recvfrom(ulSocket, pucCC3000_Rx_Buffer,
+//				CC3000_APP_BUFFER_SIZE, 0, &tSocketAddr, &tRxPacketLength);
+//		if (iReturnValue <= 0) {
+//			// No data received by device
+//			DispatcherUartSendPacket((unsigned char*) pucUARTNoDataString,
+//					sizeof(pucUARTNoDataString));
+//		} else {
+//			// Send data to UART...
+//			//DispatcherUartSendPacket(pucCC3000_Rx_Buffer, CC3000_APP_BUFFER_SIZE);
+//			DispatcherUartSendPacket(pucCC3000_Rx_Buffer, iReturnValue);
+//		}
+//		break;
 //
-//		pucIP_DefaultGWAddr[0] = ascii_to_char(usBuffer[10], usBuffer[11]);
-//		pucIP_DefaultGWAddr[1] = ascii_to_char(usBuffer[12], usBuffer[13]);
-//		pucIP_DefaultGWAddr[2] = ascii_to_char(usBuffer[14], usBuffer[15]);
-//		pucIP_DefaultGWAddr[3] = ascii_to_char(usBuffer[16], usBuffer[17]);
+//		// Handle send data command
+//	case UART_COMMAND_SEND_DATA:
+//		ulSocket = socket((INT32) AF_INET, (INT32) SOCK_DGRAM,
+//				(INT32) IPPROTO_UDP);
+//		// data pointer
+//		pcData = (char *) &usBuffer[4];
 //
-//		pucDNS[0] = 0;
-//		pucDNS[1] = 0;
-//		pucDNS[2] = 0;
-//		pucDNS[3] = 0;
+//		// data length to send
+//		ulDataLength = atoshort(usBuffer[2], usBuffer[3]);
 //
-//		netapp_dhcp((unsigned long *)pucIP_Addr, (unsigned long *)pucSubnetMask, (unsigned long *)pucIP_DefaultGWAddr, (unsigned long *)pucDNS);
+//#ifdef CC3000_TINY_DRIVER
+//		if(ulDataLength > CC3000_APP_BUFFER_SIZE)
+//		{
+//			ulDataLength = CC3000_APP_BUFFER_SIZE;
+//		}
+//#endif
+//
+//		pcSockAddrAscii = (pcData + ulDataLength);
+//
+//		// the family is always AF_INET
+//		tSocketAddr.sa_family = AF_INET;//atoshort(pcSockAddrAscii[0], pcSockAddrAscii[1]);
+//
+//		// the destination port
+//		tSocketAddr.sa_data[0] = ascii_to_char(pcSockAddrAscii[0],
+//				pcSockAddrAscii[1]);
+//		tSocketAddr.sa_data[1] = ascii_to_char(pcSockAddrAscii[2],
+//				pcSockAddrAscii[3]);
+//
+//		// the destination IP address
+//		tSocketAddr.sa_data[2] = ascii_to_char(pcSockAddrAscii[4],
+//				pcSockAddrAscii[5]);
+//		tSocketAddr.sa_data[3] = ascii_to_char(pcSockAddrAscii[6],
+//				pcSockAddrAscii[7]);
+//		tSocketAddr.sa_data[4] = ascii_to_char(pcSockAddrAscii[8],
+//				pcSockAddrAscii[9]);
+//		tSocketAddr.sa_data[5] = ascii_to_char(pcSockAddrAscii[10],
+//				pcSockAddrAscii[11]);
+//
+//		sendto(ulSocket, pcData, ulDataLength, 0, &tSocketAddr,
+//				sizeof(sockaddr));
+//		break;
+//
+//		// Handle bind command
+//	case UART_COMMAND_BSD_BIND:
+//		tSocketAddr.sa_family = AF_INET;
+//
+//		// the source port
+//		tSocketAddr.sa_data[0] = ascii_to_char(usBuffer[2], usBuffer[3]);
+//		tSocketAddr.sa_data[1] = ascii_to_char(usBuffer[4], usBuffer[5]);
+//
+//		// all 0 IP address
+//		memset(&tSocketAddr.sa_data[2], 0, 4);
+//
+//		bind(ulSocket, &tSocketAddr, sizeof(sockaddr));
 //
 //		break;
 
+		// Handle IP configuration command
+	case UART_COMMAND_IP_CONFIG:
+		// Open socket
+//		serverInit(ulSocket, iReturnValue, pucUARTNoDataString,
+//				pucCC3000_Rx_Buffer, tRxPacketLength, buflen, buf,
+//				&tSocketAddr);
+		break;
+
 		// Handle WLAN disconnect command
 	case UART_COMMAND_CC3000_DISCONNECT:
+		// This section works for sending CoAP packet
 //		wlan_disconnect();
-		tSocketAddr.sa_family = AF_INET;
-
-		// the destination port
-		tSocketAddr.sa_data[0] = 22; // translates to 5683 from sendto example
-		tSocketAddr.sa_data[1] = 51;
-
-		// the destination IP address
-		tSocketAddr.sa_data[2] = 192;
-		tSocketAddr.sa_data[3] = 168;
-		tSocketAddr.sa_data[4] = 1;
-		tSocketAddr.sa_data[5] = 10;
-
-		uint8_t buf[25];
-		coap_packet_t in;
-		size_t buflen;
-		in.hdr.ver = COAP_VERSION;
-		in.hdr.t = COAP_TYPE_NON;
-		in.hdr.tkl = 0;
-		in.hdr.code = COAP_METHOD_GET;
-		in.numopts = 1;
-		in.opts[0].num = COAP_OPTION_URI_PATH;
-		in.opts[0].buf.p = "light";
-		in.opts[0].buf.len = 5;
-		in.payload.len = 0;
-
-		coap_build(buf, &buflen, &in);
-
-		ulSocket = socket((INT32) AF_INET, (INT32) SOCK_DGRAM,
-				(INT32) IPPROTO_UDP);
-		sendto(ulSocket, buf, buflen, 0, &tSocketAddr, sizeof(sockaddr));
+//		tSocketAddr.sa_family = AF_INET;
+//
+//		// the destination port
+//		tSocketAddr.sa_data[0] = 22; // translates to 5683 from sendto example
+//		tSocketAddr.sa_data[1] = 51;
+//
+//		// the destination IP address
+//		tSocketAddr.sa_data[2] = 192;
+//		tSocketAddr.sa_data[3] = 168;
+//		tSocketAddr.sa_data[4] = 1;
+//		tSocketAddr.sa_data[5] = 10;
+//
+//		uint8_t buf[25];
+//		coap_packet_t in;
+//		size_t buflen;
+//		in.hdr.ver = COAP_VERSION;
+//		in.hdr.t = COAP_TYPE_NON;
+//		in.hdr.tkl = 0;
+//		in.hdr.code = COAP_METHOD_GET;
+//		in.numopts = 1;
+//		in.opts[0].num = COAP_OPTION_URI_PATH;
+//		in.opts[0].buf.p = "light";
+//		in.opts[0].buf.len = 5;
+//		in.payload.len = 0;
+//
+//		coap_build(buf, &buflen, &in);
+//
+//		ulSocket = socket((INT32) AF_INET, (INT32) SOCK_DGRAM,
+//				(INT32) IPPROTO_UDP);
+//		sendto(ulSocket, buf, buflen, 0, &tSocketAddr, sizeof(sockaddr));
 		break;
 
 	default:
@@ -715,7 +769,7 @@ void DemoHandleUartCommand(unsigned char *usBuffer) {
 main(void) {
 	ulCC3000DHCP = 0;
 	ulCC3000Connected = 0;
-	ulSocket = 0;
+	ulSocket = -1;
 
 	WDTCTL = WDTPW + WDTHOLD;
 
@@ -734,14 +788,6 @@ main(void) {
 		__bis_SR_register(LPM2_bits + GIE);
 		__no_operation();
 
-//		coap_build(buf, &buflen, &in);
-//		sendto(ulSocket, buf, buflen, 0, &tSocketAddr, sizeof(sockaddr));
-
-//		coap_handle_req(&in, &out);
-//
-//		coap_build(buf, &buflen, &out);
-//		DispatcherUartSendPacket(buf, buflen);
-
 		if (uart_have_cmd) {
 			wakeup_timer_disable();
 			//Process the cmd in RX buffer
@@ -751,11 +797,15 @@ main(void) {
 			wakeup_timer_init();
 		}
 
-		if ((ulCC3000DHCP == 1) && (ulCC3000Connected == 1)
-				&& (printOnce == 1)) {
-			printOnce = 0;
-			DispatcherUartSendPacket((unsigned char*) pucCC3000_Rx_Buffer,
-					strlen((char const*) pucCC3000_Rx_Buffer));
+		if ((ulCC3000DHCP == 1) && (ulCC3000Connected == 1)) {
+			if (printOnce == 1) {
+				printOnce = 0;
+				DispatcherUartSendPacket((unsigned char*) pucCC3000_Rx_Buffer,
+						strlen((char const*) pucCC3000_Rx_Buffer));
+			}
+			wakeup_timer_disable();
+			serverListen();
+			wakeup_timer_init();
 		}
 
 	}
