@@ -481,7 +481,7 @@ static inline void serverListen() {
 	sockaddr tSocketAddr;
 
 	// Open socket
-	if (0 != HostFlowControlConsumeBuff(ulSocket)) {
+	if (ulSocket == -1) {
 		ulSocket = socket((INT32) AF_INET, (INT32) SOCK_DGRAM,
 				(INT32) IPPROTO_UDP);
 
@@ -503,27 +503,30 @@ static inline void serverListen() {
 	tv.tv_usec = 0;
 	FD_ZERO(&readSet);
 	//		FD_ZERO(&writeSet);
-	//		FD_ZERO(&exceptSet);
+//			FD_ZERO(&exceptSet);
 	FD_SET(ulSocket, &readSet);
 //			FD_SET(ulSocket, &writeSet);
 	iReturnValue = select(ulSocket + 1, &readSet, NULL,
 	NULL, &tv);
-	if (iReturnValue <= 0) {
+	if (iReturnValue < 0) {
+		ulSocket = -1;
+		return;
+	}
+	if (iReturnValue == 0) {
 		// No data received by device
 		DispatcherUartSendPacket((unsigned char*) pucUARTNoDataString,
 				sizeof(pucUARTNoDataString));
 		return;
 	}
 	// perform read on read socket if data available
-	if (FD_ISSET(ulSocket, &readSet))
-	{
+	if (FD_ISSET(ulSocket, &readSet)) {
 		// perform receive
-		//			do {
-		iReturnValue = recvfrom(ulSocket, pucCC3000_Rx_Buffer,
-		CC3000_APP_BUFFER_SIZE, 0, &tSocketAddr, &tRxPacketLength);
+//					do {
+		iReturnValue = recvfrom(ulSocket, pucCC3000_Rx_Buffer, 1, 0,
+				&tSocketAddr, &tRxPacketLength);
 		if (iReturnValue > 0)
 			DispatcherUartSendPacket(pucCC3000_Rx_Buffer, iReturnValue);
-		//			} while (iReturnValue > 0);
+//					} while (iReturnValue > 0);
 	}
 
 	// perform send on the write socket if it is ready to receive next chunk of data
@@ -582,30 +585,28 @@ void DemoHandleUartCommand(unsigned char *usBuffer) {
 		// default ulSecType=0, key_len=0
 		wlan_connect1(ulSecType, pcSsid, ulSsidLen, NULL, key, key_len);
 
-//		uint32_t pairwisecipher_or_keylen = 0;
-//		uint32_t groupcipher_or_keyindex = 0;
-//		uint32_t key_mgmt = 0;
-//		if ((WLAN_SEC_WPA == ulSecType)
-//				|| (WLAN_SEC_WPA2 == ulSecType)) {
-//			pairwisecipher_or_keylen = WPA_CIPHER_TKIP | WPA_CIPHER_CCMP;
-//			groupcipher_or_keyindex = WPA_CIPHER_WEP40 | WPA_CIPHER_WEP104
-//					| WPA_CIPHER_TKIP | WPA_CIPHER_CCMP;
-//			key_mgmt = WPA_DRIVER_CAPA_KEY_MGMT_WPA2;
-//		} else if (WLAN_SEC_WEP == ulSecType) {
-//			pairwisecipher_or_keylen = key_len;
-//			groupcipher_or_keyindex = 0;
-//			key_mgmt = 0;
-//		} else if (WLAN_SEC_UNSEC == ulSecType) {
-//			pairwisecipher_or_keylen = 0;
-//			groupcipher_or_keyindex = 0;
-//			key_mgmt = 0;
-//		}
-//		long rc = wlan_add_profile(ulSecType, (uint8_t*) pcSsid,
-//				ulSsidLen,
-//				NULL, /* bssid is inferred */
-//				1, pairwisecipher_or_keylen,
-//				groupcipher_or_keyindex, key_mgmt, key, key_len);
-//		wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
+		uint32_t pairwisecipher_or_keylen = 0;
+		uint32_t groupcipher_or_keyindex = 0;
+		uint32_t key_mgmt = 0;
+		if ((WLAN_SEC_WPA == ulSecType) || (WLAN_SEC_WPA2 == ulSecType)) {
+			pairwisecipher_or_keylen = WPA_CIPHER_TKIP | WPA_CIPHER_CCMP;
+			groupcipher_or_keyindex = WPA_CIPHER_WEP40 | WPA_CIPHER_WEP104
+					| WPA_CIPHER_TKIP | WPA_CIPHER_CCMP;
+			key_mgmt = WPA_DRIVER_CAPA_KEY_MGMT_WPA2;
+		} else if (WLAN_SEC_WEP == ulSecType) {
+			pairwisecipher_or_keylen = key_len;
+			groupcipher_or_keyindex = 0;
+			key_mgmt = 0;
+		} else if (WLAN_SEC_UNSEC == ulSecType) {
+			pairwisecipher_or_keylen = 0;
+			groupcipher_or_keyindex = 0;
+			key_mgmt = 0;
+		}
+		long rc = wlan_add_profile(ulSecType, (uint8_t*) pcSsid, ulSsidLen,
+		NULL, /* bssid is inferred */
+		1, pairwisecipher_or_keylen, groupcipher_or_keyindex, key_mgmt, key,
+				key_len);
+		wlan_ioctl_set_connection_policy(DISABLE, DISABLE, ENABLE);
 	}
 		break;
 

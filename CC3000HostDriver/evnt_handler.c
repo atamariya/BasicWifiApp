@@ -508,12 +508,8 @@ INT32 hci_unsol_event_handler(CHAR *event_hdr)
 
 	STREAM_TO_UINT16(event_hdr, HCI_EVENT_OPCODE_OFFSET,event_type);
 
-	if (event_type & HCI_EVNT_UNSOL_BASE)
+	if (event_type == HCI_EVNT_DATA_UNSOL_FREE_BUFF)
 	{
-		switch(event_type)
-		{
-
-		case HCI_EVNT_DATA_UNSOL_FREE_BUFF:
 			{
 				hci_event_unsol_flowcontrol_handler(event_hdr);
 
@@ -530,11 +526,11 @@ INT32 hci_unsol_event_handler(CHAR *event_hdr)
 				return 1;
 
 			}
-		}
 	}
 
 	if(event_type & HCI_EVNT_WLAN_UNSOL_BASE)
 	{           
+		int ret = 1;
 		switch(event_type)
 		{
 		case HCI_EVNT_WLAN_KEEPALIVE:
@@ -612,9 +608,9 @@ INT32 hci_unsol_event_handler(CHAR *event_hdr)
 
 			//'default' case which means "event not supported" 	
 		default: 
-			return (0);
+			ret = 0;
 		}
-		return(1);
+		return (ret);
 	}
 
 	if ((event_type == HCI_EVNT_SEND) || (event_type == HCI_EVNT_SENDTO)
