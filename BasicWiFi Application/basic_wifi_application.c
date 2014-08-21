@@ -480,6 +480,13 @@ static inline void serverListen() {
 	socklen_t tRxPacketLength;
 	sockaddr tSocketAddr;
 
+	if (buflen > 0) {
+		// Perform either send or receive per method call for efficient stack usage
+		sendto(ulSocket, buf, buflen, 0, &tSocketAddr, sizeof(sockaddr));
+		buflen = 0;
+		return;
+	}
+
 	// Open socket
 	if (ulSocket == -1) {
 		ulSocket = socket((INT32) AF_INET, (INT32) SOCK_DGRAM,
@@ -540,9 +547,6 @@ static inline void serverListen() {
 			coap_build(buf, &buflen, &in);
 		}
 
-		if (buflen > 0) {
-			sendto(ulSocket, buf, buflen, 0, &tSocketAddr, sizeof(sockaddr));
-		}
 	} else {
 		// No data received by device
 		DispatcherUartSendPacket((unsigned char*) pucUARTNoDataString,
@@ -785,8 +789,10 @@ main(void) {
 
 	// Loop forever waiting  for commands from PC...
 	while (1) {
+		if (buflen == 0) {
 		__bis_SR_register(LPM2_bits + GIE);
 		__no_operation();
+		}
 
 		if (uart_have_cmd) {
 			wakeup_timer_disable();

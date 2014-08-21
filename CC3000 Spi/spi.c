@@ -360,10 +360,10 @@ SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 		//
 		tSLInformation.WlanInterruptDisable();
 
-		while (sSpiInformation.ulSpiState != eSPI_STATE_IDLE)
-		{
-			;
-		}
+//		while (sSpiInformation.ulSpiState != eSPI_STATE_IDLE)
+//		{
+//			;
+//		}
 
 		
 		sSpiInformation.ulSpiState = eSPI_STATE_WRITE_IRQ;
@@ -447,7 +447,7 @@ SpiWriteDataSynchronous(unsigned char *data, unsigned short size)
 void
 SpiReadDataSynchronous(unsigned char *data, unsigned short size)
 {
-	long i = 0;
+	uint8_t i = 0;
     unsigned char *data_to_send = tSpiReadHeader;
 	
 	for (i = 0; i < size; i ++)
@@ -496,7 +496,7 @@ SpiReadHeader(void)
 long
 SpiReadDataCont(void)
 {
-    long data_to_recv;
+    uint8_t data_to_recv;
 	unsigned char *evnt_buff, type;
 
 	
