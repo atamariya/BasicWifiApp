@@ -512,12 +512,7 @@ static inline void serverListen() {
 		ulSocket = -1;
 		return;
 	}
-	if (iReturnValue == 0) {
-		// No data received by device
-		DispatcherUartSendPacket((unsigned char*) pucUARTNoDataString,
-				sizeof(pucUARTNoDataString));
-		return;
-	}
+
 	// perform read on read socket if data available
 	if (FD_ISSET(ulSocket, &readSet)) {
 		// perform receive
@@ -527,27 +522,31 @@ static inline void serverListen() {
 		if (iReturnValue > 0)
 			DispatcherUartSendPacket(pucCC3000_Rx_Buffer, iReturnValue);
 //					} while (iReturnValue > 0);
-	}
 
-	// perform send on the write socket if it is ready to receive next chunk of data
-	//		if (FD_ISSET(wSocket, &writeSet))
-	{
-		coap_packet_t in;
-		in.hdr.ver = COAP_VERSION;
-		in.hdr.t = COAP_TYPE_NON;
-		in.hdr.tkl = 0;
-		in.hdr.code = COAP_METHOD_GET;
-		in.numopts = 1;
-		in.opts[0].num = COAP_OPTION_URI_PATH;
-		in.opts[0].buf.p = "light";
-		in.opts[0].buf.len = 5;
-		in.payload.len = 0;
-		buflen = 0;
-		coap_build(buf, &buflen, &in);
-	}
+		// perform send on the write socket if it is ready to receive next chunk of data
+		//		if (FD_ISSET(wSocket, &writeSet))
+		{
+			coap_packet_t in;
+			in.hdr.ver = COAP_VERSION;
+			in.hdr.t = COAP_TYPE_NON;
+			in.hdr.tkl = 0;
+			in.hdr.code = COAP_METHOD_GET;
+			in.numopts = 1;
+			in.opts[0].num = COAP_OPTION_URI_PATH;
+			in.opts[0].buf.p = "light";
+			in.opts[0].buf.len = 5;
+			in.payload.len = 0;
+			buflen = 0;
+			coap_build(buf, &buflen, &in);
+		}
 
-	if (buflen > 0) {
-		sendto(ulSocket, buf, buflen, 0, &tSocketAddr, sizeof(sockaddr));
+		if (buflen > 0) {
+			sendto(ulSocket, buf, buflen, 0, &tSocketAddr, sizeof(sockaddr));
+		}
+	} else {
+		// No data received by device
+		DispatcherUartSendPacket((unsigned char*) pucUARTNoDataString,
+				sizeof(pucUARTNoDataString));
 	}
 }
 
