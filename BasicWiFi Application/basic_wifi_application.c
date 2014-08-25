@@ -476,11 +476,11 @@ uint8_t buf[25];
 size_t buflen = 0;
 
 static inline void serverListen() {
-	volatile signed long iReturnValue;
+	volatile int16_t iReturnValue;
 	socklen_t tRxPacketLength;
 	sockaddr tSocketAddr;
 
-	if (buflen > 0) {
+	if (buflen > 0 && ulSocket >= 0) {
 		// Perform either send or receive per method call for efficient stack usage
 		sendto(ulSocket, buf, buflen, 0, &tSocketAddr, sizeof(sockaddr));
 		buflen = 0;
@@ -488,7 +488,8 @@ static inline void serverListen() {
 	}
 
 	// Open socket
-	if (ulSocket == -1) {
+	if (ulSocket == -1)
+	{
 		ulSocket = socket((INT32) AF_INET, (INT32) SOCK_DGRAM,
 				(INT32) IPPROTO_UDP);
 
@@ -515,13 +516,15 @@ static inline void serverListen() {
 //			FD_SET(ulSocket, &writeSet);
 	iReturnValue = select(ulSocket + 1, &readSet, NULL,
 	NULL, &tv);
-	if (iReturnValue < 0) {
+	if (iReturnValue <= 0) {
+		closesocket(ulSocket);
 		ulSocket = -1;
 		return;
 	}
 
 	// perform read on read socket if data available
-	if (FD_ISSET(ulSocket, &readSet)) {
+	if (FD_ISSET(ulSocket, &readSet))
+	{
 		// perform receive
 //					do {
 		iReturnValue = recvfrom(ulSocket, pucCC3000_Rx_Buffer, 1, 0,
