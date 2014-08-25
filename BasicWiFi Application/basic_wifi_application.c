@@ -516,9 +516,9 @@ static inline void serverListen() {
 	iReturnValue = select(ulSocket + 1, &readSet, NULL,
 	NULL, &tv);
 	if (iReturnValue <= 0) {
-		closesocket(ulSocket);
-		ulSocket = -1;
-		return;
+//		closesocket(ulSocket);
+//		ulSocket = -1;
+//		return;
 	}
 
 	// perform read on read socket if data available
@@ -552,6 +552,8 @@ static inline void serverListen() {
 		// No data received by device
 		DispatcherUartSendPacket((unsigned char*) pucUARTNoDataString,
 				sizeof(pucUARTNoDataString));
+		closesocket(ulSocket);
+		ulSocket = -1;
 	}
 }
 
@@ -795,7 +797,7 @@ main(void) {
 			__no_operation();
 		}
 
-		if (uart_have_cmd) {
+		if (uart_have_cmd == 1) {
 			wakeup_timer_disable();
 			//Process the cmd in RX buffer
 			DemoHandleUartCommand(g_ucUARTBuffer);
