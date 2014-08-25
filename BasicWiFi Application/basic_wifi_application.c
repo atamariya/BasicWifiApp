@@ -476,11 +476,11 @@ uint8_t buf[25];
 size_t buflen = 0;
 
 static inline void serverListen() {
-	volatile signed long iReturnValue;
+	volatile int16_t iReturnValue;
 	socklen_t tRxPacketLength;
 	sockaddr tSocketAddr;
 
-	if (buflen > 0) {
+	if (buflen > 0 && ulSocket >= 0) {
 		// Perform either send or receive per method call for efficient stack usage
 		sendto(ulSocket, buf, buflen, 0, &tSocketAddr, sizeof(sockaddr));
 		buflen = 0;
@@ -515,7 +515,8 @@ static inline void serverListen() {
 //			FD_SET(ulSocket, &writeSet);
 	iReturnValue = select(ulSocket + 1, &readSet, NULL,
 	NULL, &tv);
-	if (iReturnValue < 0) {
+	if (iReturnValue <= 0) {
+		closesocket(ulSocket);
 		ulSocket = -1;
 		return;
 	}
@@ -790,8 +791,8 @@ main(void) {
 	// Loop forever waiting  for commands from PC...
 	while (1) {
 		if (buflen == 0) {
-		__bis_SR_register(LPM2_bits + GIE);
-		__no_operation();
+			__bis_SR_register(LPM2_bits + GIE);
+			__no_operation();
 		}
 
 		if (uart_have_cmd) {

@@ -95,7 +95,7 @@ tSpiInformation sSpiInformation;
 //
 // Static buffer for 5 bytes of SPI HEADER
 //
-unsigned char tSpiReadHeader[] = {READ, 0, 0, 0, 0};
+const unsigned char tSpiReadHeader[] = {READ, 0, 0, 0, 0};
 
 
 void SpiWriteDataSynchronous(unsigned char *data, unsigned short size);
@@ -333,10 +333,8 @@ SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
         // The magic number that resides at the end of the TX/RX buffer (1 byte after the allocated size)
         // for the purpose of overrun detection. If the magic number is overwritten - buffer overrun 
         // occurred - and we will be stuck here forever!
-	if (wlan_tx_buffer[CC3000_TX_BUFFER_SIZE - 1] != CC3000_BUFFER_MAGIC_NUMBER)
+    while (wlan_tx_buffer[CC3000_TX_BUFFER_SIZE - 1] != CC3000_BUFFER_MAGIC_NUMBER)
 	{
-		while (1)
-			;
 	}
 
 	if (sSpiInformation.ulSpiState == eSPI_STATE_POWERUP)
@@ -621,8 +619,7 @@ SpiTriggerRxProcessing(void)
         // occurred - and we will stuck here forever!
 	if (sSpiInformation.pRxPacket[CC3000_RX_BUFFER_SIZE - 1] != CC3000_BUFFER_MAGIC_NUMBER)
 	{
-		while (1)
-			;
+		WDTCTL = 0;
 	}
 	
 	sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
