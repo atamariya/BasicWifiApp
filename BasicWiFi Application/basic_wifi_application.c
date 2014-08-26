@@ -472,20 +472,13 @@ int initDriver(void) {
 //!  @brief  The function handles commands arrived from CLI
 //
 //*****************************************************************************
-uint8_t buf[25];
 size_t buflen = 0;
 
 static inline void serverListen() {
 	volatile int16_t iReturnValue;
 	socklen_t tRxPacketLength;
 	sockaddr tSocketAddr;
-
-	if (buflen > 0 && ulSocket >= 0) {
-		// Perform either send or receive per method call for efficient stack usage
-		sendto(ulSocket, buf, buflen, 0, &tSocketAddr, sizeof(sockaddr));
-		buflen = 0;
-		return;
-	}
+	uint8_t *buf = g_ucUARTBuffer;
 
 	// Open socket
 	if (ulSocket == -1) {
@@ -546,6 +539,11 @@ static inline void serverListen() {
 			in.payload.len = 0;
 			buflen = 0;
 			coap_build(buf, &buflen, &in);
+		}
+		if (buflen > 0 && ulSocket >= 0) {
+			// Perform either send or receive per method call for efficient stack usage
+			sendto(ulSocket, buf, buflen, 0, &tSocketAddr, sizeof(sockaddr));
+			buflen = 0;
 		}
 
 	} else {
