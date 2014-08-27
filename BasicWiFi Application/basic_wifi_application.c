@@ -473,6 +473,8 @@ int initDriver(void) {
 //
 //*****************************************************************************
 sockaddr tSocketAddr;
+char *rsp;
+
 static void serverListen(uint8_t *buf) {
 	INT16 iReturnValue;
 	socklen_t tRxPacketLength;
@@ -529,14 +531,19 @@ static void serverListen(uint8_t *buf) {
 			coap_packet_t in;
 			coap_parse(&in, pucCC3000_Rx_Buffer, buflen);
 
-			in.hdr.code = COAP_RSPCODE_CONTENT;
-			in.numopts = 1;
-			in.opts[0].num = COAP_OPTION_URI_PATH;
-			in.opts[0].buf.p = "light";
-			in.opts[0].buf.len = 5;
-			in.payload.len = 0;
+//			in.hdr.code = COAP_RSPCODE_CONTENT;
+//			in.numopts = 1;
+//			in.opts[0].num = COAP_OPTION_URI_PATH;
+//			in.opts[0].buf.p = "light";
+//			in.opts[0].buf.len = 5;
+//			in.payload.len = 0;
+
+			rsp = g_ucUARTBuffer;
+			memset(rsp, 0, UART_IF_BUFFER);
+			coap_handle_req(&in, &in);
 
 			buflen = 0;
+			buf = pucCC3000_Rx_Buffer;
 			coap_build(buf, &buflen, &in);
 		}
 		if (buflen > 0) {

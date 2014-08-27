@@ -333,8 +333,9 @@ SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
         // The magic number that resides at the end of the TX/RX buffer (1 byte after the allocated size)
         // for the purpose of overrun detection. If the magic number is overwritten - buffer overrun 
         // occurred - and we will be stuck here forever!
-    while (wlan_tx_buffer[CC3000_TX_BUFFER_SIZE - 1] != CC3000_BUFFER_MAGIC_NUMBER)
+    if (wlan_tx_buffer[CC3000_TX_BUFFER_SIZE - 1] != CC3000_BUFFER_MAGIC_NUMBER)
 	{
+    	WDTCTL = 0;
 	}
 
 	if (sSpiInformation.ulSpiState == eSPI_STATE_POWERUP)
