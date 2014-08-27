@@ -472,13 +472,11 @@ int initDriver(void) {
 //!  @brief  The function handles commands arrived from CLI
 //
 //*****************************************************************************
-size_t buflen = 0;
-
-static inline void serverListen() {
-	volatile int16_t iReturnValue;
+sockaddr tSocketAddr;
+static void serverListen(uint8_t *buf) {
+	INT16 iReturnValue;
 	socklen_t tRxPacketLength;
-	sockaddr tSocketAddr;
-	uint8_t *buf = g_ucUARTBuffer;
+	uint8_t buflen = 0;
 
 	// Open socket
 	if (ulSocket == -1) {
@@ -501,31 +499,29 @@ static inline void serverListen() {
 	/* Wait up to five seconds. */
 	tv.tv_sec = 5;
 	tv.tv_usec = 0;
-	FD_ZERO(&readSet);
-	//		FD_ZERO(&writeSet);
+	do {
+		FD_ZERO(&readSet);
+		//		FD_ZERO(&writeSet);
 //			FD_ZERO(&exceptSet);
-	FD_SET(ulSocket, &readSet);
+		FD_SET(ulSocket, &readSet);
 //			FD_SET(ulSocket, &writeSet);
-	iReturnValue = select(ulSocket + 1, &readSet, NULL,
-	NULL, &tv);
-	if (iReturnValue <= 0) {
-//		closesocket(ulSocket);
-//		ulSocket = -1;
-//		return;
-	}
+		iReturnValue = select(ulSocket + 1, &readSet, NULL,
+		NULL, &tv);
 
-	// perform read on read socket if data available
-	if (FD_ISSET(ulSocket, &readSet)) {
-		// perform receive
-//					do {
-		iReturnValue = recvfrom(ulSocket, pucCC3000_Rx_Buffer, 1, 0,
-				&tSocketAddr, &tRxPacketLength);
-		if (iReturnValue > 0)
-			DispatcherUartSendPacket(pucCC3000_Rx_Buffer, iReturnValue);
-//					} while (iReturnValue > 0);
+		// perform read on read socket if data available
+		if (FD_ISSET(ulSocket, &readSet)) {
+			// perform receive
+			iReturnValue = recvfrom(ulSocket, pucCC3000_Rx_Buffer + buflen, 1,
+					0, &tSocketAddr, &tRxPacketLength);
+			if (iReturnValue > 0)
+				buflen++;
+		}
+	} while (iReturnValue > 0);
 
-		// perform send on the write socket if it is ready to receive next chunk of data
-		//		if (FD_ISSET(wSocket, &writeSet))
+	// perform send on the write socket if it is ready to receive next chunk of data
+	//		if (FD_ISSET(wSocket, &writeSet))
+	if (buflen > 0) {
+		DispatcherUartSendPacket(pucCC3000_Rx_Buffer, buflen);
 		{
 			coap_packet_t in;
 			in.hdr.ver = COAP_VERSION;
@@ -540,10 +536,9 @@ static inline void serverListen() {
 			buflen = 0;
 			coap_build(buf, &buflen, &in);
 		}
-		if (buflen > 0 && ulSocket >= 0) {
+		if (buflen > 0) {
 			// Perform either send or receive per method call for efficient stack usage
 			sendto(ulSocket, buf, buflen, 0, &tSocketAddr, sizeof(sockaddr));
-			buflen = 0;
 		}
 
 	} else {
@@ -790,10 +785,8 @@ main(void) {
 
 	// Loop forever waiting  for commands from PC...
 	while (1) {
-		if (buflen == 0) {
-			__bis_SR_register(LPM2_bits + GIE);
-			__no_operation();
-		}
+		__bis_SR_register(LPM2_bits + GIE);
+		__no_operation();
 
 		if (uart_have_cmd == 1) {
 			wakeup_timer_disable();
@@ -811,7 +804,7 @@ main(void) {
 						strlen((char const*) pucCC3000_Rx_Buffer));
 			}
 			wakeup_timer_disable();
-			serverListen();
+			serverListen(g_ucUARTBuffer);
 			wakeup_timer_init();
 		}
 
