@@ -472,11 +472,11 @@ int initDriver(void) {
 //!  @brief  The function handles commands arrived from CLI
 //
 //*****************************************************************************
-sockaddr tSocketAddr;
 char *rsp;
 
-static void serverListen(uint8_t *buf) {
+static void serverListen() {
 	INT16 iReturnValue;
+	sockaddr tSocketAddr;
 	socklen_t tRxPacketLength;
 	uint8_t buflen = 0;
 
@@ -526,6 +526,7 @@ static void serverListen(uint8_t *buf) {
 
 	// perform send on the write socket if it is ready to receive next chunk of data
 	if (buflen > 0) {
+		uint8_t *buf;
 		DispatcherUartSendPacket(pucCC3000_Rx_Buffer, buflen);
 		{
 			coap_packet_t in;
@@ -813,7 +814,7 @@ main(void) {
 						strlen((char const*) pucCC3000_Rx_Buffer));
 			}
 			wakeup_timer_disable();
-			serverListen(g_ucUARTBuffer);
+			serverListen();
 			wakeup_timer_init();
 		}
 
