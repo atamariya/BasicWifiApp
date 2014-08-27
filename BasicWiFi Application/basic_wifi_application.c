@@ -494,27 +494,31 @@ static void serverListen(uint8_t *buf) {
 	}
 
 	fd_set readSet;
-	//		, writeSet;
 	struct timeval tv;
 	/* Wait up to five seconds. */
 	tv.tv_sec = 5;
 	tv.tv_usec = 0;
 	do {
 		FD_ZERO(&readSet);
-		//		FD_ZERO(&writeSet);
-//			FD_ZERO(&exceptSet);
 		FD_SET(ulSocket, &readSet);
-//			FD_SET(ulSocket, &writeSet);
 		iReturnValue = select(ulSocket + 1, &readSet, NULL,
 		NULL, &tv);
 
 		// perform read on read socket if data available
 		if (FD_ISSET(ulSocket, &readSet)) {
 			// perform receive
-			iReturnValue = recvfrom(ulSocket, pucCC3000_Rx_Buffer + buflen, 1,
-					0, &tSocketAddr, &tRxPacketLength);
+			if (buflen == 0)
+				// Only first read gives correct socket address.
+				// Buffer length of 10 doesn't work
+				iReturnValue = recvfrom(ulSocket, pucCC3000_Rx_Buffer + buflen,
+						5, 0, &tSocketAddr, &tRxPacketLength);
+			else
+				iReturnValue = recvfrom(ulSocket, pucCC3000_Rx_Buffer + buflen,
+						5, 0, NULL, NULL);
+			//iReturnValue might be -1
 			if (iReturnValue > 0)
-				buflen++;
+				buflen += iReturnValue;
+
 		}
 	} while (iReturnValue > 0);
 
