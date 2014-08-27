@@ -523,25 +523,23 @@ static void serverListen(uint8_t *buf) {
 	} while (iReturnValue > 0);
 
 	// perform send on the write socket if it is ready to receive next chunk of data
-	//		if (FD_ISSET(wSocket, &writeSet))
 	if (buflen > 0) {
 		DispatcherUartSendPacket(pucCC3000_Rx_Buffer, buflen);
 		{
 			coap_packet_t in;
-			in.hdr.ver = COAP_VERSION;
-			in.hdr.t = COAP_TYPE_NON;
-			in.hdr.tkl = 0;
-			in.hdr.code = COAP_METHOD_GET;
+			coap_parse(&in, pucCC3000_Rx_Buffer, buflen);
+
+			in.hdr.code = COAP_RSPCODE_CONTENT;
 			in.numopts = 1;
 			in.opts[0].num = COAP_OPTION_URI_PATH;
 			in.opts[0].buf.p = "light";
 			in.opts[0].buf.len = 5;
 			in.payload.len = 0;
+
 			buflen = 0;
 			coap_build(buf, &buflen, &in);
 		}
 		if (buflen > 0) {
-			// Perform either send or receive per method call for efficient stack usage
 			sendto(ulSocket, buf, buflen, 0, &tSocketAddr, sizeof(sockaddr));
 		}
 
